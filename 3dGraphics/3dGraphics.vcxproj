@@ -141,11 +141,21 @@
   <ItemGroup>
     <ClCompile Include="display.cpp" />
     <ClCompile Include="Main.cpp" />
+    <ClCompile Include="mesh.cpp" />
+    <ClCompile Include="triangle.cpp" />
     <ClCompile Include="vector.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="display.h" />
+    <ClInclude Include="mesh.h" />
+    <ClInclude Include="triangle.h" />
     <ClInclude Include="vector.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="README.md">
+      <SubType>
+      </SubType>
+    </None>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
