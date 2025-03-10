@@ -11,7 +11,7 @@
 std::vector<triangle_t> triangles_to_render;
 
 
-vec3_t camera_position = { 0, 0, -5 };
+vec3_t camera_position = { 0, 0, 0 };
 
 float fov_factor = 640;
 
@@ -84,7 +84,7 @@ void update(void) {
 			mesh.vertices[mesh_face.c - 1]
 		};
 
-		triangle_t projected_triangle;
+		vec3_t transformed_vertexs[3];
 
 		// Loop all three vertices of this current face and apply transformations
 		for (int j = 0; j < 3; j++) {
@@ -92,12 +92,41 @@ void update(void) {
 			tranformed_vertex = tranformed_vertex.vec3_rotate_x(mesh.rotation.x);
 			tranformed_vertex = tranformed_vertex.vec3_rotate_y(mesh.rotation.y);
 			tranformed_vertex = tranformed_vertex.vec3_rotate_z(mesh.rotation.z);
-			
-			// Translate the vertex away from the camera
-			tranformed_vertex.z -= camera_position.z;
 
+			// Translate the vertex away from the camera
+			tranformed_vertex.z += 5;
+			// Save the transformed vertex in the array of transformed vertexs
+			transformed_vertexs[j] = tranformed_vertex;
+		}
+
+		vec3_t vector_a = transformed_vertexs[0]; /*   A   */
+		vec3_t vector_b = transformed_vertexs[1]; /*  / \  */
+		vec3_t vector_c = transformed_vertexs[2]; /* B---C */
+
+		vec3_t vector_ab = vector_b.sub(vector_a);
+		vec3_t vector_ac = vector_c.sub(vector_a);
+		vector_ab.normalize();
+		vector_ac.normalize();
+
+		// Compute the normal of the face
+		vec3_t normal = vector_ab.cross(vector_ac);
+		normal.normalize();
+		// Find the vector between a point in the triangle and the camera
+		vec3_t camera_ray = camera_position.sub(vector_a);
+
+		// Calculate how aligned the camera ray is with the face normal 
+		float dot_normal_camera = normal.dot(camera_ray);
+
+		if (dot_normal_camera < 0) {
+			continue;
+		}
+
+		triangle_t projected_triangle;
+
+
+		for (int j = 0; j < 3; j++) {
 			// Project the current vertex
-			vec2_t projected_point = project(tranformed_vertex);
+			vec2_t projected_point = project(transformed_vertexs[j]);
 
 			// Scale the translate the projected points to the middle of the screen
 			projected_point.x += window_width / 2;
