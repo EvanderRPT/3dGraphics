@@ -1,5 +1,5 @@
 #include "display.h"
-
+#include <iostream>
 SDL_Window* window = NULL;
 SDL_Renderer* renderer = NULL;
 uint32_t* color_buffer = NULL;
@@ -87,9 +87,23 @@ void clear_color_buffer(uint32_t color) {
 
 void destroy_window(void) {
     free(color_buffer);
+#ifdef DEBUG
+    std::cout << " free(color_buffer);" << std::endl;
+
+#endif // DEBUG
     SDL_DestroyRenderer(renderer);
+#ifdef DEBUG
+    std::cout << " SDL_DestroyRenderer(renderer););" << std::endl;
+#endif
     SDL_DestroyWindow(window);
+#ifdef DEBUG
+    std::cout << "  SDL_DestroyWindow(window);" << std::endl;
+#endif // DEBUG
     SDL_Quit();
+#ifdef DEBUG
+    std::cout << " SDL_Quit();" << std::endl;
+#endif // DEBUG
+
 }
 
 void draw_line(int x0, int y0, int x1, int y1, uint32_t color)

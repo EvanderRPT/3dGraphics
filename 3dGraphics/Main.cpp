@@ -6,6 +6,8 @@
 #include "display.h"
 #include "vector.h"
 #include "mesh.h"
+#include <iostream>
+
 
 
 std::vector<triangle_t> triangles_to_render;
@@ -19,10 +21,17 @@ bool is_running = false;
 
 int previous_frame_time = 0;
 
+enum cull_method cull_method = CULL_NONE;
+enum render_method render_method = RENDER_WIRE;
 void setup(void) {
+
+	// Initialize render mode and triangle culling method
+	render_method = RENDER_WIRE;
+	cull_method = CULL_BACKFACE;
+
+
 	// Allocate the required memory in bytes to hold the color buffer
-	color_buffer =
-		(uint32_t*)malloc(sizeof(uint32_t) * window_width * window_height);
+	color_buffer = (uint32_t*)malloc(sizeof(uint32_t) * window_width * window_height);
 
 	// Creating a SDL texture that is used to display the color buffer
 	color_buffer_texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
@@ -30,19 +39,32 @@ void setup(void) {
 		window_width, window_height);
 
 	//load_cube_mesh_data();
-	load_obj_file("D:\\Codes\\Dev\\C_CPP\\3dGraphics\\3dGraphics\\f22.obj");
+	load_obj_file("D:\\Codes\\Dev\\C_CPP\\3dGraphics\\3dGraphics\\cube.obj");
+
 }
 
 void process_input(void) {
 	SDL_Event event;
 	SDL_PollEvent(&event);
-
 	switch (event.type) {
 	case SDL_QUIT:
 		is_running = false;
 		break;
 	case SDL_KEYDOWN:
-		if (event.key.keysym.sym == SDLK_ESCAPE) is_running = false;
+		if (event.key.keysym.sym == SDLK_ESCAPE)
+			is_running = false;
+		if (event.key.keysym.sym == SDLK_1)
+			render_method = RENDER_WIRE_VERTEX;
+		if (event.key.keysym.sym == SDLK_2)
+			render_method = RENDER_WIRE;
+		if (event.key.keysym.sym == SDLK_3)
+			render_method = RENDER_FILL_TRIANGLE;
+		if (event.key.keysym.sym == SDLK_4)
+			render_method = RENDER_FILL_TRIANGLE_WIRE;
+		if (event.key.keysym.sym == SDLK_c)
+			cull_method = CULL_BACKFACE;
+		if (event.key.keysym.sym == SDLK_d)
+			cull_method = CULL_NONE;
 		break;
 	}
 }
@@ -69,8 +91,8 @@ void update(void) {
 
 
 
-	//mesh.rotation.y += 0.01;
-	//mesh.rotation.z += 0.01;
+	mesh.rotation.y += 0.01;
+	mesh.rotation.z += 0.01;
 	mesh.rotation.x += 0.01;
 
 
@@ -98,29 +120,31 @@ void update(void) {
 			// Save the transformed vertex in the array of transformed vertexs
 			transformed_vertexs[j] = tranformed_vertex;
 		}
+		if (cull_method == CULL_BACKFACE) {
+			vec3_t vector_a = transformed_vertexs[0]; /*   A   */
+			vec3_t vector_b = transformed_vertexs[1]; /*  / \  */
+			vec3_t vector_c = transformed_vertexs[2]; /* B---C */
 
-		vec3_t vector_a = transformed_vertexs[0]; /*   A   */
-		vec3_t vector_b = transformed_vertexs[1]; /*  / \  */
-		vec3_t vector_c = transformed_vertexs[2]; /* B---C */
+			vec3_t vector_ab = vector_b.sub(vector_a);
+			vec3_t vector_ac = vector_c.sub(vector_a);
+			vector_ab.normalize();
+			vector_ac.normalize();
 
-		vec3_t vector_ab = vector_b.sub(vector_a);
-		vec3_t vector_ac = vector_c.sub(vector_a);
-		vector_ab.normalize();
-		vector_ac.normalize();
+			// Compute the normal of the face
+			vec3_t normal = vector_ab.cross(vector_ac);
+			normal.normalize();
+			// Find the vector between a point in the triangle and the camera
+			vec3_t camera_ray = camera_position.sub(vector_a);
 
-		// Compute the normal of the face
-		vec3_t normal = vector_ab.cross(vector_ac);
-		normal.normalize();
-		// Find the vector between a point in the triangle and the camera
-		vec3_t camera_ray = camera_position.sub(vector_a);
+			// Calculate how aligned the camera ray is with the face normal 
+			float dot_normal_camera = normal.dot(camera_ray);
 
-		// Calculate how aligned the camera ray is with the face normal 
-		float dot_normal_camera = normal.dot(camera_ray);
-
-		if (dot_normal_camera < 0) {
-			continue;
+			if (dot_normal_camera < 0) {
+				continue;
+			}
 		}
-
+		
+	
 		triangle_t projected_triangle;
 
 
@@ -143,9 +167,19 @@ void update(void) {
 }
 
 void free_resources(void) {
-	free(color_buffer);
-	mesh.vertices.clear();
+	////free(color_buffer);
+	//std::cout << "free(color_buffer);" << std::endl;
+
 	mesh.faces.clear();
+#ifdef DEBUG
+	std::cout << "mesh.faces.clear();" << std::endl;
+#endif // DEBUG
+
+
+	mesh.vertices.clear();
+#ifdef DEBUG
+	std::cout << "mesh.vertices.clear();" << std::endl;
+#endif // DEBUG
 }
 
 void render(void) {
@@ -153,16 +187,26 @@ void render(void) {
 	// Loop all projected triangles and render them
 	for (int i = 0; i < triangles_to_render.size(); i++) {
 		triangle_t triangle = triangles_to_render[i];
-		draw_rect(triangle.points[0].x, triangle.points[0].y, 3, 3, 0xFFFFFF00);
-		draw_rect(triangle.points[1].x, triangle.points[1].y, 3, 3, 0xFFFFFF00);
-		draw_rect(triangle.points[2].x, triangle.points[2].y, 3, 3, 0xFFFFFF00);
+		if (render_method == RENDER_FILL_TRIANGLE || render_method == RENDER_FILL_TRIANGLE_WIRE) {
+			triangle.draw_filled_triangle(0xFF555555);
+		}
 
-		draw_triangle(triangle.points[0].x, triangle.points[0].y,
-			triangle.points[1].x, triangle.points[1].y,
-			triangle.points[2].x, triangle.points[2].y,
-			0xFFFFFF00);
+		// Draw triangle wireframe
+		if (render_method == RENDER_WIRE || render_method == RENDER_WIRE_VERTEX || render_method == RENDER_FILL_TRIANGLE_WIRE) {
+			triangle.draw_triangle(0xFFFFFFFF);
+		}
+
+		// Draw triangle vertex points
+		if (render_method == RENDER_WIRE_VERTEX) {
+			draw_rect(triangle.points[0].x - 3, triangle.points[0].y - 3, 6, 6, 0xFFFF0000); // vertex A
+			draw_rect(triangle.points[1].x - 3, triangle.points[1].y - 3, 6, 6, 0xFFFF0000); // vertex B
+			draw_rect(triangle.points[2].x - 3, triangle.points[2].y - 3, 6, 6, 0xFFFF0000); // vertex C
+		}
 	}
 
+	
+
+	//draw_triangle(300, 100, 50, 400, 500, 700, 0xFF00FF00);
 
 	// Clear the array of triangles to render
 	triangles_to_render.clear();
@@ -186,7 +230,17 @@ int main(int args, char* argr[]) {
 	}
 
 	destroy_window();
+#ifdef DEBUG
+	std::cout << "destroy_window" << std::endl;
+#endif // DEBUG
+
+
 	free_resources();
+#ifdef DEBUG
+	std::cout << "free_resources" << std::endl;
+#endif // DEBUG
+
+
 
 	return 0;
 }

@@ -2,7 +2,7 @@
 
 
 #include "vector.h"
-
+#include <stdint.h>
 class face_t {
 public:
 	int a;
@@ -21,6 +21,9 @@ public:
 		points[1] = p2;
 		points[2] = p3;
 	}
+	
+	void draw_filled_triangle(uint32_t color);
+	void draw_triangle(uint32_t color);
 };
 
 
